@@ -2,6 +2,8 @@
 
 mod app;
 mod config;
+mod secrets;
+mod stream;
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
