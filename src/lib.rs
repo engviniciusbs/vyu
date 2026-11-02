@@ -7,6 +7,7 @@
 //! - [`config`], [`secrets`]: persistence and passwords
 
 pub mod app;
+pub mod audio;
 pub mod canvas;
 pub mod config;
 pub mod secrets;
