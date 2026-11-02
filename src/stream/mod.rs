@@ -1,6 +1,7 @@
 //! Camera streams: RTSP URLs, session lifecycle and FFmpeg decoding.
 
 pub mod backoff;
+pub mod demo;
 pub mod ffmpeg;
 pub mod frame;
 pub mod quality;

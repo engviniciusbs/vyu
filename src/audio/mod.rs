@@ -4,4 +4,4 @@ pub mod mixer;
 pub mod output;
 
 pub use mixer::Mixer;
-
+pub use output::AudioOutput;
