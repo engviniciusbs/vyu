@@ -32,6 +32,8 @@ pub struct CanvasState {
     pub focused: Option<Uuid>,
     /// Tile whose hover controls are visible.
     controls_for: Option<Uuid>,
+    /// Camera under the mouse pointer (for the `M` shortcut).
+    pub hovered: Option<Uuid>,
 }
 
 #[derive(Default)]
@@ -270,6 +272,7 @@ pub fn show(ui: &mut egui::Ui, cfg: &mut Config, rts: &mut Runtimes, mixer: &Arc
     } else {
         pointer.filter(|p| canvas.contains(*p)).and_then(|p| canvas::topmost_at(&rects, local(p)))
     };
+    state.hovered = hovered_idx.map(|i| layout.tiles[i].camera_id);
     let painter = ui.painter_at(canvas);
     let mut screen_rects = vec![ERect::NOTHING; layout.tiles.len()];
     for &i in &order {

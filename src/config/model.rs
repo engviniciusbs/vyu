@@ -157,6 +157,49 @@ impl Config {
         self.cameras.iter().find(|c| c.id == id)
     }
 
+    fn check_new_layout_name(&self, name: &str) -> Result<String, String> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("Dê um nome ao layout".into());
+        }
+        if self.layouts.iter().any(|l| l.name == name) {
+            return Err(format!("Já existe um layout chamado \"{name}\""));
+        }
+        Ok(name.to_string())
+    }
+
+    /// Copies the active layout under a new name and switches to it.
+    pub fn save_layout_as(&mut self, name: &str) -> Result<(), String> {
+        let name = self.check_new_layout_name(name)?;
+        let tiles = self.active().tiles.clone();
+        self.layouts.push(Layout { name: name.clone(), tiles });
+        self.active_layout = name;
+        Ok(())
+    }
+
+    pub fn rename_layout(&mut self, old: &str, new: &str) -> Result<(), String> {
+        let new = self.check_new_layout_name(new)?;
+        let layout = self.layouts.iter_mut().find(|l| l.name == old).ok_or("Layout não encontrado")?;
+        layout.name = new.clone();
+        if self.active_layout == old {
+            self.active_layout = new;
+        }
+        Ok(())
+    }
+
+    /// Deletes a layout; the last one can't be deleted. Returns whether it was removed.
+    pub fn delete_layout(&mut self, name: &str) -> bool {
+        if self.layouts.len() <= 1 {
+            return false;
+        }
+        let before = self.layouts.len();
+        self.layouts.retain(|l| l.name != name);
+        if self.active_layout == name {
+            self.active_layout = self.layouts[0].name.clone();
+        }
+        self.layouts.len() < before
+    }
+
     /// Removes a camera and every tile that shows it, in all layouts.
     pub fn remove_camera(&mut self, id: Uuid) {
         self.cameras.retain(|c| c.id != id);
@@ -208,5 +251,37 @@ mod tests {
         cfg.layouts.clear();
         assert_eq!(cfg.active_mut().name, "Padrão");
         assert_eq!(cfg.layouts.len(), 1);
+    }
+
+    #[test]
+    fn save_layout_as_copies_tiles_and_activates() {
+        let mut cfg = Config::default();
+        let id = Uuid::new_v4();
+        cfg.layouts[0].tiles.push(tile(id));
+        cfg.save_layout_as("Noite").unwrap();
+        assert_eq!(cfg.active_layout, "Noite");
+        assert_eq!(cfg.active().tiles, cfg.layouts[0].tiles);
+        assert_eq!(cfg.layouts.len(), 2);
+    }
+
+    #[test]
+    fn layout_names_must_be_unique_and_non_empty() {
+        let mut cfg = Config::default();
+        assert!(cfg.save_layout_as("  ").is_err());
+        assert!(cfg.save_layout_as("Padrão").is_err());
+        cfg.save_layout_as("Dia").unwrap();
+        assert!(cfg.rename_layout("Dia", "Padrão").is_err());
+        cfg.rename_layout("Dia", "Manhã").unwrap();
+        assert_eq!(cfg.active_layout, "Manhã");
+    }
+
+    #[test]
+    fn cannot_delete_last_layout() {
+        let mut cfg = Config::default();
+        assert!(!cfg.delete_layout("Padrão"));
+        cfg.save_layout_as("Dia").unwrap();
+        assert!(cfg.delete_layout("Dia"));
+        assert_eq!(cfg.layouts.len(), 1);
+        assert_eq!(cfg.active_layout, "Padrão");
     }
 }
