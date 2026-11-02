@@ -1,5 +1,9 @@
 //! Camera streams: RTSP URLs, session lifecycle and FFmpeg decoding.
 
+pub mod backoff;
+pub mod frame;
+pub mod quality;
+pub mod session;
 pub mod url;
 
 /// Tapo exposes two RTSP paths: `stream1` (high quality) and `stream2` (low).
