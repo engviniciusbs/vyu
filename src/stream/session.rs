@@ -105,8 +105,16 @@ impl SessionHandle {
 impl Drop for SessionHandle {
     fn drop(&mut self) {
         let _ = self.tx.send(Command::Stop);
+        // An FFmpeg read can block for up to the 5 s I/O timeout; don't freeze the
+        // UI for that. Wait briefly, then let the thread finish on its own.
         if let Some(t) = self.thread.take() {
-            let _ = t.join();
+            let deadline = std::time::Instant::now() + Duration::from_millis(300);
+            while !t.is_finished() && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            if t.is_finished() {
+                let _ = t.join();
+            }
         }
     }
 }

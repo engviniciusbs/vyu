@@ -1,10 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod app;
-mod canvas;
-mod config;
-mod secrets;
-mod stream;
+use vyu::app;
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
