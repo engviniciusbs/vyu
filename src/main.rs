@@ -3,6 +3,8 @@
 use vyu::app;
 
 fn main() -> eframe::Result<()> {
+    let _log_guard = vyu::logging::init(&vyu::config::store::config_dir().join("logs"));
+    tracing::info!("vyu {} iniciando", env!("CARGO_PKG_VERSION"));
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("vyu")

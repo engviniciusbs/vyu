@@ -8,7 +8,9 @@
 
 pub mod app;
 pub mod audio;
+pub mod autostart;
 pub mod canvas;
 pub mod config;
+pub mod logging;
 pub mod secrets;
 pub mod stream;

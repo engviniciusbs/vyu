@@ -53,6 +53,10 @@ impl VyuApp {
         if demo && cfg.cameras.is_empty() {
             add_demo_cameras(&mut cfg);
         }
+        if !demo {
+            // The registry is the source of truth (the user may have removed it elsewhere).
+            cfg.settings.start_with_windows = crate::autostart::is_enabled();
+        }
 
         let mut notice = None;
         if let Some(backup) = loaded.recovered_backup {
@@ -217,7 +221,15 @@ impl VyuApp {
     }
 
     /// Registers/unregisters vyu in the Windows startup list.
-    fn apply_autostart(&mut self) {}
+    fn apply_autostart(&mut self) {
+        if self.demo {
+            return;
+        }
+        if let Err(e) = crate::autostart::set_enabled(self.cfg.settings.start_with_windows) {
+            self.cfg.settings.start_with_windows = crate::autostart::is_enabled();
+            self.notice = Some((format!("Não foi possível alterar o início automático: {e}"), Instant::now()));
+        }
+    }
 }
 
 fn digit_key(n: usize) -> Key {
