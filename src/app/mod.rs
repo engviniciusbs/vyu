@@ -131,7 +131,7 @@ impl VyuApp {
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
-        if self.dialog.is_open() || ctx.memory(|m| m.focused().is_some()) {
+        if self.dialog.is_open() || typing(ctx) {
             return;
         }
         let fullscreen = ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
@@ -230,6 +230,11 @@ impl VyuApp {
             self.notice = Some((format!("Não foi possível alterar o início automático: {e}"), Instant::now()));
         }
     }
+}
+
+/// True while the user is typing in a text field (shortcuts must not fire).
+fn typing(ctx: &egui::Context) -> bool {
+    ctx.text_edit_focused()
 }
 
 fn digit_key(n: usize) -> Key {
@@ -342,5 +347,40 @@ impl eframe::App for VyuApp {
         if self.dirty_since.is_some() {
             self.save_now();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Runs one egui pass with a button and a text field, focusing `which`.
+    fn ctx_with_focus(which: &str) -> egui::Context {
+        let ctx = egui::Context::default();
+        let mut text = String::new();
+        for _ in 0..2 {
+            let input = egui::RawInput { focused: true, ..Default::default() };
+            let mut out = ctx.run_ui(input, |ui| {
+                let b = ui.button("ok");
+                let t = ui.text_edit_singleline(&mut text);
+                match which {
+                    "button" => b.request_focus(),
+                    "text" => t.request_focus(),
+                    _ => {}
+                }
+            });
+            out.textures_delta.clear();
+        }
+        ctx
+    }
+
+    #[test]
+    fn focused_button_does_not_block_shortcuts() {
+        assert!(!typing(&ctx_with_focus("button")));
+    }
+
+    #[test]
+    fn focused_text_field_blocks_shortcuts() {
+        assert!(typing(&ctx_with_focus("text")));
     }
 }
