@@ -8,6 +8,9 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    env:
+      # LLVM comes preinstalled on the runner; setup-ffmpeg.ps1 skips its Python probe.
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -16,8 +19,8 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/setup-ffmpeg.ps1
+          $global:LASTEXITCODE = 0
           "FFMPEG_DIR=$PWD\vendor\ffmpeg" >> $env:GITHUB_ENV
-          "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
           "$PWD\vendor\ffmpeg\bin" >> $env:GITHUB_PATH
       - run: cargo build --all-targets
       - run: cargo test
