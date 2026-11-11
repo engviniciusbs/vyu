@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::Config;
 
-/// `%APPDATA%\vyu`
+/// `%APPDATA%\vyu` on Windows, `~/.config/vyu` on Linux.
 pub fn config_dir() -> PathBuf {
     directories::BaseDirs::new()
         .map(|d| d.config_dir().join("vyu"))

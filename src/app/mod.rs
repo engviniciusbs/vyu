@@ -54,7 +54,7 @@ impl VyuApp {
             add_demo_cameras(&mut cfg);
         }
         if !demo {
-            // The registry is the source of truth (the user may have removed it elsewhere).
+            // The OS startup list is the source of truth (the user may have removed it elsewhere).
             cfg.settings.start_with_windows = crate::autostart::is_enabled();
         }
 
@@ -220,7 +220,7 @@ impl VyuApp {
         ctx.request_repaint_after(Duration::from_millis(500));
     }
 
-    /// Registers/unregisters vyu in the Windows startup list.
+    /// Registers/unregisters vyu in the OS startup list.
     fn apply_autostart(&mut self) {
         if self.demo {
             return;

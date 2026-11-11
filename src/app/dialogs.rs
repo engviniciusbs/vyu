@@ -361,7 +361,7 @@ pub fn show(ctx: &egui::Context, dialog: &mut Dialog, cfg: &mut Config) -> Dialo
                 ui.set_width(320.0);
                 ui.heading("Configurações");
                 ui.add_space(8.0);
-                if ui.checkbox(&mut cfg.settings.start_with_windows, "Iniciar com o Windows").changed() {
+                if ui.checkbox(&mut cfg.settings.start_with_windows, crate::autostart::LABEL).changed() {
                     out.settings_changed = true;
                     out.changed = true;
                 }

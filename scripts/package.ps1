@@ -10,6 +10,7 @@ Set-Location $Root
 
 # FFmpeg (vendor/ffmpeg) and libclang are needed to build.
 & (Join-Path $PSScriptRoot 'setup-ffmpeg.ps1') | Out-Null
+$env:FFMPEG_DIR = Join-Path $Root 'vendor\ffmpeg'
 if (-not $env:LIBCLANG_PATH) {
     $env:LIBCLANG_PATH = (python -c "import clang, os; print(os.path.join(os.path.dirname(clang.__file__), 'native'))").Trim()
 }

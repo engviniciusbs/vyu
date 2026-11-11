@@ -1,6 +1,6 @@
 # Arquitetura do vyu
 
-Um único programa Rust. As partes com lógica, como geometria, sessões, mixer e configuração, não dependem de interface nem de hardware, e por isso têm testes automáticos. As partes que conversam com o mundo externo (FFmpeg, placa de som, Credential Manager, registro do Windows) são adaptadores finos.
+Um único programa Rust. As partes com lógica, como geometria, sessões, mixer e configuração, não dependem de interface nem de hardware, e por isso têm testes automáticos. As partes que conversam com o mundo externo (FFmpeg, placa de som, cofre de senhas do sistema, início automático) são adaptadores finos.
 
 ## Mapa dos módulos
 
@@ -14,7 +14,7 @@ src/
 │  ├─ runtime.rs      Liga/desliga a sessão de cada câmera conforme o layout ativo
 │  ├─ bar.rs          Barra flutuante (+ Câmera · Layouts · ⚙) que some sozinha
 │  ├─ dialogs.rs      Janelas de câmera, layouts e configurações
-│  └─ style.rs        Fontes Segoe UI do Windows + tema escuro
+│  └─ style.rs        Fontes do sistema (Segoe UI / Ubuntu, Noto, DejaVu) + tema escuro
 ├─ canvas/            Geometria pura da tela livre (sem egui)
 │  ├─ geometry.rs     Rect, alças de borda/canto, arrastar, tamanho mínimo, 16:9, z-order
 │  └─ snap.rs         Linhas-guia: "grudar" em bordas vizinhas e da janela
@@ -32,9 +32,9 @@ src/
 ├─ config/
 │  ├─ model.rs        Camera, Tile, Layout, Settings, Config (+ operações de layout)
 │  └─ store.rs        Leitura/gravação atômica do config.json, backup se corrompido
-├─ secrets.rs         Senhas no Gerenciador de Credenciais (crate keyring)
-├─ autostart.rs       "Iniciar com o Windows" (HKCU\…\Run)
-└─ logging.rs         Logs diários em %APPDATA%\vyu\logs
+├─ secrets.rs         Senhas no cofre do sistema: Credential Manager / Secret Service (crate keyring)
+├─ autostart/         "Iniciar com o sistema": windows.rs (HKCU\…\Run), linux.rs (~/.config/autostart)
+└─ logging.rs         Logs diários em %APPDATA%\vyu\logs (Linux: ~/.config/vyu/logs)
 ```
 
 ## Threads e fluxo de dados
@@ -77,13 +77,13 @@ stateDiagram-v2
 | Conectando | "Conectando…" |
 | Queda / sem vídeo por 5 s | Último quadro escurecido + motivo + "Reconectando (tentativa N, a cada X s)…" |
 | Senha errada | "Usuário ou senha incorretos" + botão **Editar câmera** (não tenta de novo sozinho) |
-| Senha ausente no Windows | "Senha não encontrada" + **Editar câmera** |
+| Senha ausente no cofre do sistema | "Senha não encontrada" + **Editar câmera** |
 | Sem placa de som | App funciona sem áudio; aviso no topo |
 | config.json corrompido | Backup `config.json.bak-<data>`, começa do zero, aviso no topo |
 
 ## Decisões importantes
 
-- **FFmpeg com link dinâmico (LGPL):** suporta H.264/H.265, aceleração D3D11 e o áudio G.711 das Tapo. As DLLs acompanham o `.exe`.
+- **FFmpeg com link dinâmico (LGPL):** suporta H.264/H.265, aceleração por GPU (D3D11 no Windows; CUDA/VA-API no Linux) e o áudio G.711 das Tapo. No Windows as DLLs acompanham o `.exe`; no Linux usa o FFmpeg da distribuição.
 - **`fflags=nobuffer` não é usado:** essa opção descarta os pacotes lidos durante a análise inicial, incluindo o primeiro quadro-chave, e a câmera demoraria a mostrar a primeira imagem.
 - **Fechar uma câmera não trava a interface:** uma leitura do FFmpeg pode bloquear até 5 s; a interface espera no máximo 300 ms e deixa a thread terminar sozinha.
 - **Posições normalizadas (0–1):** o layout acompanha qualquer tamanho de janela ou monitor, e os blocos nunca ficam fora da tela.
