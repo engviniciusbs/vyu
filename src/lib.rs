@@ -1,4 +1,4 @@
-//! vyu — lightweight viewer for Tapo/RTSP cameras on Windows.
+//! vyu — lightweight viewer for Tapo/RTSP cameras on Windows and Linux.
 //!
 //! Module map (see `docs/architecture.md`):
 //! - [`app`]: egui UI (canvas, floating bar, dialogs)

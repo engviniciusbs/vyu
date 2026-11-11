@@ -2,7 +2,7 @@
 name = "vyu"
 version = "0.1.0"
 edition = "2024"
-description = "Visualizador desktop leve para câmeras Tapo/RTSP no Windows"
+description = "Visualizador desktop leve para câmeras Tapo/RTSP no Windows e Linux"
 license = "MIT"
 repository = "https://github.com/engviniciusbs/vyu"
 
@@ -12,7 +12,6 @@ ffmpeg-next = { version = "9", default-features = false, features = ["codec", "f
 cpal = "0.18"
 ringbuf = "0.6"
 keyring = "4"
-winreg = "0.56"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -21,6 +20,13 @@ directories = "6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Native window backends (eframe has default features off above).
+eframe = { version = "0.37", default-features = false, features = ["wayland", "x11"] }
 
 [dev-dependencies]
 tempfile = "3"

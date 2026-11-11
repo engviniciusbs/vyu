@@ -8,6 +8,8 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("vyu")
+            // Wayland/X11 app id: matches vyu.desktop so the dock shows the right icon.
+            .with_app_id("vyu")
             .with_inner_size([1280.0, 720.0])
             .with_min_inner_size([480.0, 270.0]),
         ..Default::default()

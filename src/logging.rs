@@ -1,4 +1,4 @@
-//! Logs to `%APPDATA%\vyu\logs\vyu.log.<date>` (daily rotation).
+//! Logs to `<config dir>/vyu/logs/vyu.log.<date>` (daily rotation).
 //! Level comes from `RUST_LOG` (default `info`). Never log raw RTSP URLs:
 //! use `stream::url::mask`.
 

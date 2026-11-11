@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=vyu
+GenericName=Visualizador de câmeras
+Comment=Visualizador leve para câmeras Tapo/RTSP
+Exec=vyu
+Icon=vyu
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=camera;câmera;tapo;rtsp;cctv;
+StartupWMClass=vyu

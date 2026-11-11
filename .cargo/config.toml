@@ -1,3 +1,0 @@
-[env]
-# FFmpeg shared build downloaded by scripts/setup-ffmpeg.ps1
-FFMPEG_DIR = { value = "vendor/ffmpeg", relative = true }

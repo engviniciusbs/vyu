@@ -1,4 +1,5 @@
-//! Camera passwords live in the Windows Credential Manager, never in config.json.
+//! Camera passwords live in the OS keyring (Windows Credential Manager, or the
+//! Secret Service on Linux — GNOME Keyring/KWallet), never in config.json.
 //! Each camera is stored under service `vyu`, user `<camera_id>`.
 
 use keyring::{Entry, Error};
@@ -6,12 +7,17 @@ use uuid::Uuid;
 
 const SERVICE: &str = "vyu";
 
+#[cfg(windows)]
+const KEYRING_NAME: &str = "Gerenciador de Credenciais";
+#[cfg(not(windows))]
+const KEYRING_NAME: &str = "chaveiro do sistema";
+
 #[derive(Debug)]
 pub struct SecretError(pub String);
 
 impl std::fmt::Display for SecretError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "erro no Gerenciador de Credenciais: {}", self.0)
+        write!(f, "erro no {KEYRING_NAME}: {}", self.0)
     }
 }
 
@@ -42,7 +48,7 @@ pub fn delete_password(id: Uuid) -> Result<(), SecretError> {
 mod tests {
     use super::*;
 
-    /// Touches the real Credential Manager; run with `cargo test -- --ignored`.
+    /// Touches the real OS keyring; run with `cargo test -- --ignored`.
     #[test]
     #[ignore]
     fn credential_roundtrip() {

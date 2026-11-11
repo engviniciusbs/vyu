@@ -119,9 +119,13 @@ impl FfmpegSource {
             (*raw).thread_count = 2;
             (*raw).flags |= ffi::AV_CODEC_FLAG_LOW_DELAY as i32;
         }
-        let hw = std::env::var_os("VYU_NO_HW").is_none() && !HW_BROKEN.load(Ordering::Relaxed) && unsafe { attach_d3d11(&mut vctx) };
+        let hw = if std::env::var_os("VYU_NO_HW").is_none() && !HW_BROKEN.load(Ordering::Relaxed) {
+            unsafe { attach_hw(&mut vctx) }
+        } else {
+            None
+        };
         let video = vctx.decoder().video().map_err(|e| map_err(e, host))?;
-        tracing::info!("vídeo {}x{} ({:?}), aceleração por hardware: {hw}", video.width(), video.height(), video.id());
+        tracing::info!("vídeo {}x{} ({:?}), aceleração por hardware: {}", video.width(), video.height(), video.id(), hw.unwrap_or("nenhuma"));
 
         let audio = input.streams().best(media::Type::Audio).and_then(|s| {
             let ctx = codec::Context::from_parameters(s.parameters()).ok()?;
@@ -152,7 +156,8 @@ impl FfmpegSource {
     }
 
     fn to_rgba(&mut self, src: &frame::Video) -> Result<Frame, SourceError> {
-        let is_hw = unsafe { (*src.as_ptr()).format == ffi::AVPixelFormat::AV_PIX_FMT_D3D11 as i32 };
+        // GPU frames (D3D11, CUDA, VAAPI…) carry a hardware frames context.
+        let is_hw = unsafe { !(*src.as_ptr()).hw_frames_ctx.is_null() };
         let mut transferred = frame::Video::empty();
         let src = if is_hw {
             let r = unsafe { ffi::av_hwframe_transfer_data(transferred.as_mut_ptr(), src.as_ptr(), 0) };
@@ -264,18 +269,30 @@ impl Source for FfmpegSource {
     }
 }
 
-/// Tries to attach a D3D11VA device so the decoder outputs GPU frames.
-unsafe fn attach_d3d11(ctx: &mut codec::Context) -> bool {
-    let mut dev: *mut ffi::AVBufferRef = ptr::null_mut();
-    let r = unsafe {
-        ffi::av_hwdevice_ctx_create(&mut dev, ffi::AVHWDeviceType::AV_HWDEVICE_TYPE_D3D11VA, ptr::null(), ptr::null_mut(), 0)
-    };
-    if r < 0 || dev.is_null() {
-        return false;
+/// Hardware decoders to try, best first.
+#[cfg(windows)]
+const HW_DEVICES: &[(ffi::AVHWDeviceType, &str)] = &[(ffi::AVHWDeviceType::AV_HWDEVICE_TYPE_D3D11VA, "D3D11")];
+/// NVIDIA (NVDEC via CUDA) first, then VA-API (Intel/AMD).
+#[cfg(not(windows))]
+const HW_DEVICES: &[(ffi::AVHWDeviceType, &str)] = &[
+    (ffi::AVHWDeviceType::AV_HWDEVICE_TYPE_CUDA, "CUDA"),
+    (ffi::AVHWDeviceType::AV_HWDEVICE_TYPE_VAAPI, "VAAPI"),
+];
+
+/// Tries to attach a hardware device so the decoder outputs GPU frames.
+/// Returns the name of the one attached.
+unsafe fn attach_hw(ctx: &mut codec::Context) -> Option<&'static str> {
+    for &(kind, name) in HW_DEVICES {
+        let mut dev: *mut ffi::AVBufferRef = ptr::null_mut();
+        let r = unsafe { ffi::av_hwdevice_ctx_create(&mut dev, kind, ptr::null(), ptr::null_mut(), 0) };
+        if r < 0 || dev.is_null() {
+            continue;
+        }
+        // The codec context takes ownership of this reference and unrefs it on close.
+        unsafe { (*ctx.as_mut_ptr()).hw_device_ctx = dev };
+        return Some(name);
     }
-    // The codec context takes ownership of this reference and unrefs it on close.
-    unsafe { (*ctx.as_mut_ptr()).hw_device_ctx = dev };
-    true
+    None
 }
 
 #[cfg(test)]
@@ -294,10 +311,15 @@ mod tests {
 }
 
 /// Decodes a generated H.264 + G.711 A-law file (Tapo's codecs) through the
-/// real FFmpeg path. Needs `ffmpeg.exe` on PATH (vendor/ffmpeg/bin); skipped otherwise.
+/// real FFmpeg path. Needs the `ffmpeg` CLI on PATH (Windows: vendor/ffmpeg/bin); skipped otherwise.
 #[cfg(test)]
 mod file_tests {
     use super::*;
+
+    #[cfg(windows)]
+    const H264_ENCODER: &str = "h264_mf";
+    #[cfg(not(windows))]
+    const H264_ENCODER: &str = "libx264";
 
     fn make_fixture(dir: &std::path::Path) -> Option<std::path::PathBuf> {
         let out = dir.join("tapo-like.mkv");
@@ -305,7 +327,7 @@ mod file_tests {
             .args(["-hide_banner", "-loglevel", "error", "-y"])
             .args(["-f", "lavfi", "-i", "testsrc=size=640x360:rate=15"])
             .args(["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=8000"])
-            .args(["-t", "2", "-c:v", "h264_mf", "-c:a", "pcm_alaw", "-ar", "8000", "-ac", "1"])
+            .args(["-t", "2", "-c:v", H264_ENCODER, "-pix_fmt", "yuv420p", "-c:a", "pcm_alaw", "-ar", "8000", "-ac", "1"])
             .arg(&out)
             .status()
             .ok()?;
@@ -317,7 +339,7 @@ mod file_tests {
         init();
         let dir = tempfile::tempdir().unwrap();
         let Some(path) = make_fixture(dir.path()) else {
-            eprintln!("ffmpeg.exe indisponível; teste ignorado");
+            eprintln!("ffmpeg indisponível; teste ignorado");
             return;
         };
         let mut src = FfmpegSource::open(path.to_str().unwrap(), "local").expect("open");
